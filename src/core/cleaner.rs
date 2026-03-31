@@ -2,8 +2,9 @@
 
 use crate::dal::{ConfigReader, OperationLogger};
 use crate::models::{Config, Package};
-use crate::utils::permissions;
+use crate::utils::{permissions, progress, symbols};
 use crate::{OxidCleanError, Result};
+use colored::Colorize;
 use dialoguer::Confirm;
 use log::{debug, info, warn};
 use std::process::Command;
@@ -68,25 +69,60 @@ impl Cleaner {
             permissions::ensure_root()?;
         }
 
-        info!("Processando {} pacotes...", packages.len());
+        let total = packages.len();
+        info!("Processando {} pacotes...", total);
 
-        for pkg in packages {
+        // Criar progress bar se não for auto_confirm (modo interativo tem seu próprio feedback)
+        let pb = if self.auto_confirm && !self.dry_run {
+            Some(progress::create_clean_progress(total as u64))
+        } else {
+            None
+        };
+
+        for (_idx, pkg) in packages.into_iter().enumerate() {
+            if let Some(ref pb) = pb {
+                pb.set_message(format!("{}", pkg.name));
+            }
+
             // Verificar se é protegido
             if self.config.is_protected(&pkg.name) {
+                let msg = format!("{} {} (protegido)", symbols::WARNING.yellow(), pkg.name);
+                if let Some(ref pb) = pb {
+                    pb.println(msg);
+                } else {
+                    println!("{}", msg);
+                }
                 warn!("Pacote '{}' está protegido, pulando", pkg.name);
                 result.skipped.push(pkg.name.clone());
+                if let Some(ref pb) = pb {
+                    pb.inc(1);
+                }
                 continue;
             }
 
             // Verificar se está na lista de ignorados
             if self.config.is_ignored(&pkg.name) {
+                let msg = format!("{} {} (ignorado)", symbols::WARNING.yellow(), pkg.name);
+                if let Some(ref pb) = pb {
+                    pb.println(msg);
+                } else if !self.auto_confirm {
+                    println!("{}", msg);
+                }
                 debug!("Pacote '{}' está na lista de ignorados, pulando", pkg.name);
                 result.skipped.push(pkg.name.clone());
+                if let Some(ref pb) = pb {
+                    pb.inc(1);
+                }
                 continue;
             }
 
             // Solicitar confirmação
             if !self.auto_confirm && !self.confirm_removal(&pkg)? {
+                println!(
+                    "{} {} (usuário recusou)",
+                    symbols::WARNING.yellow(),
+                    pkg.name
+                );
                 result.skipped.push(pkg.name.clone());
                 continue;
             }
@@ -94,13 +130,38 @@ impl Cleaner {
             // Executar remoção
             match self.remove_package(&pkg) {
                 Ok(()) => {
+                    let msg = format!(
+                        "{} {} removido ({})",
+                        symbols::SUCCESS.green(),
+                        pkg.name,
+                        crate::utils::humanize_bytes(pkg.size)
+                    );
+                    if let Some(ref pb) = pb {
+                        pb.println(msg);
+                    } else if !self.dry_run {
+                        println!("{}", msg);
+                    }
                     result.removed.push(pkg.name.clone());
                     result.space_freed += pkg.size;
                 }
                 Err(e) => {
+                    let msg = format!("{} {} falhou: {}", symbols::ERROR.red(), pkg.name, e);
+                    if let Some(ref pb) = pb {
+                        pb.println(msg);
+                    } else {
+                        println!("{}", msg);
+                    }
                     result.failed.push((pkg.name.clone(), e.to_string()));
                 }
             }
+
+            if let Some(ref pb) = pb {
+                pb.inc(1);
+            }
+        }
+
+        if let Some(pb) = pb {
+            pb.finish_and_clear();
         }
 
         Ok(result)
