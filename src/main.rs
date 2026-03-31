@@ -64,7 +64,13 @@ fn run(cli: Cli) -> oxidclean::Result<()> {
             },
         ),
 
-        Commands::Cache { stats, clean } => cmd_cache(stats, clean, &output_opts),
+        Commands::Cache {
+            stats,
+            clean,
+            dry_run,
+            yes,
+            keep,
+        } => cmd_cache(stats, clean, dry_run, yes, keep, &output_opts),
 
         Commands::List { sort_by_size } => cmd_list(OutputOptions {
             sort_by_size,
@@ -262,10 +268,20 @@ fn cmd_analyze(package: &str, opts: OutputOptions) -> oxidclean::Result<()> {
 }
 
 /// Comando: cache
-fn cmd_cache(stats: bool, clean: bool, opts: &OutputOptions) -> oxidclean::Result<()> {
+fn cmd_cache(
+    stats: bool,
+    clean: bool,
+    dry_run: bool,
+    yes: bool,
+    keep: usize,
+    opts: &OutputOptions,
+) -> oxidclean::Result<()> {
+    use dialoguer::Confirm;
     use oxidclean::core::cache_manager::CacheManager;
+    use oxidclean::utils::{permissions, symbols};
 
-    let manager = CacheManager::new()?;
+    let mut manager = CacheManager::new()?;
+    manager.set_keep_versions(keep);
 
     if stats || (!stats && !clean) {
         let cache_stats = manager.scan()?;
@@ -296,8 +312,154 @@ fn cmd_cache(stats: bool, clean: bool, opts: &OutputOptions) -> oxidclean::Resul
     }
 
     if clean {
-        output::print_warning("Limpeza de cache ainda não implementada completamente");
-        output::print_info("Use 'paccache -r' para limpar o cache do pacman");
+        // Verificar permissões
+        if !dry_run {
+            permissions::ensure_root()?;
+        }
+
+        println!();
+        if dry_run {
+            output::print_warning("Modo DRY-RUN: nenhuma alteração será feita");
+        }
+
+        // Encontrar versões antigas
+        let old_versions = manager.find_old_versions()?;
+
+        if old_versions.is_empty() {
+            output::print_success("Nenhuma versão antiga encontrada no cache!");
+            return Ok(());
+        }
+
+        let total_size: u64 = old_versions.iter().map(|e| e.size).sum();
+
+        println!(
+            "Encontradas {} versões antigas ({})",
+            old_versions.len().to_string().yellow(),
+            oxidclean::utils::humanize_bytes(total_size).green()
+        );
+        println!("Mantendo {} versões mais recentes de cada pacote", keep);
+        println!();
+
+        // Listar alguns exemplos
+        if !opts.quiet {
+            println!("{}", "Exemplos de arquivos a remover:".bold());
+            for entry in old_versions.iter().take(5) {
+                println!(
+                    "  {} {} ({})",
+                    symbols::BULLET,
+                    entry.path.file_name().unwrap_or_default().to_string_lossy(),
+                    oxidclean::utils::humanize_bytes(entry.size)
+                );
+            }
+            if old_versions.len() > 5 {
+                println!("  ... e mais {} arquivos", old_versions.len() - 5);
+            }
+            println!();
+        }
+
+        // Confirmar
+        let proceed = if dry_run {
+            true
+        } else if yes {
+            true
+        } else {
+            Confirm::new()
+                .with_prompt(format!(
+                    "Remover {} arquivos ({})?",
+                    old_versions.len(),
+                    oxidclean::utils::humanize_bytes(total_size)
+                ))
+                .default(false)
+                .interact()
+                .unwrap_or(false)
+        };
+
+        if !proceed {
+            output::print_info("Operação cancelada");
+            return Ok(());
+        }
+
+        // Executar limpeza
+        if dry_run {
+            println!();
+            for entry in &old_versions {
+                println!(
+                    "[DRY-RUN] {} Removeria: {}",
+                    symbols::SUCCESS.green(),
+                    entry.path.file_name().unwrap_or_default().to_string_lossy()
+                );
+            }
+            println!();
+            println!(
+                "DRY-RUN: {} arquivos seriam removidos, {} liberados",
+                old_versions.len().to_string().yellow(),
+                oxidclean::utils::humanize_bytes(total_size).green()
+            );
+        } else {
+            let pb = oxidclean::utils::create_clean_progress(old_versions.len() as u64);
+            let mut removed = 0;
+            let mut freed = 0u64;
+            let mut errors = Vec::new();
+
+            for entry in &old_versions {
+                pb.set_message(
+                    entry
+                        .path
+                        .file_name()
+                        .unwrap_or_default()
+                        .to_string_lossy()
+                        .to_string(),
+                );
+
+                match std::fs::remove_file(&entry.path) {
+                    Ok(()) => {
+                        removed += 1;
+                        freed += entry.size;
+                        pb.println(format!(
+                            "{} {}",
+                            symbols::SUCCESS.green(),
+                            entry.path.file_name().unwrap_or_default().to_string_lossy()
+                        ));
+                    }
+                    Err(e) => {
+                        errors.push((entry.path.clone(), e.to_string()));
+                        pb.println(format!(
+                            "{} {} ({})",
+                            symbols::ERROR.red(),
+                            entry.path.file_name().unwrap_or_default().to_string_lossy(),
+                            e
+                        ));
+                    }
+                }
+                pb.inc(1);
+            }
+
+            pb.finish_and_clear();
+
+            // Resumo
+            println!();
+            println!("{}", "═".repeat(50).cyan());
+            println!("{}", "Resumo da Limpeza de Cache".bold());
+            println!("{}", "═".repeat(50).cyan());
+            println!("  Removidos: {}", removed.to_string().green());
+            println!("  Erros:     {}", errors.len().to_string().red());
+            println!(
+                "  Espaço liberado: {}",
+                oxidclean::utils::humanize_bytes(freed).green()
+            );
+
+            if !errors.is_empty() {
+                println!();
+                output::print_warning("Arquivos com erro:");
+                for (path, error) in errors.iter().take(5) {
+                    println!(
+                        "  - {}: {}",
+                        path.file_name().unwrap_or_default().to_string_lossy().red(),
+                        error
+                    );
+                }
+            }
+        }
     }
 
     Ok(())

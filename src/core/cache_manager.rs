@@ -1,6 +1,7 @@
 //! Gerenciador de cache do Pacman
 
 use crate::dal::pacman_config::PacmanConfig;
+use crate::dal::PacmanReader;
 use crate::models::CacheStats;
 use crate::Result;
 use std::collections::HashSet;
@@ -48,6 +49,11 @@ impl CacheManager {
         }
     }
 
+    /// Define o número de versões a manter
+    pub fn set_keep_versions(&mut self, keep: usize) {
+        self.keep_versions = keep;
+    }
+
     /// Escaneia o cache e retorna estatísticas
     pub fn scan(&self) -> Result<CacheStats> {
         let mut stats = CacheStats::new();
@@ -61,8 +67,29 @@ impl CacheManager {
         stats.total_packages = entries.len();
         stats.total_size = entries.iter().map(|e| e.size).sum();
 
-        // TODO: Comparar com pacotes instalados para determinar unused
-        // Por enquanto, retorna estatísticas básicas
+        // Obter pacotes instalados para determinar unused
+        if let Ok(reader) = PacmanReader::new() {
+            if let Ok(installed) = reader.read_all_packages() {
+                let installed_names: HashSet<String> =
+                    installed.iter().map(|p| p.name.clone()).collect();
+
+                let installed_versions: HashSet<String> = installed
+                    .iter()
+                    .map(|p| format!("{}-{}", p.name, p.version))
+                    .collect();
+
+                // Contar pacotes não instalados ou versões antigas
+                for entry in &entries {
+                    let full_version = format!("{}-{}", entry.name, entry.version);
+                    if !installed_names.contains(&entry.name)
+                        || !installed_versions.contains(&full_version)
+                    {
+                        stats.unused_packages += 1;
+                        stats.unused_size += entry.size;
+                    }
+                }
+            }
+        }
 
         Ok(stats)
     }

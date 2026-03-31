@@ -70,6 +70,18 @@ pub enum Commands {
         /// Limpar cache de pacotes antigos
         #[arg(long)]
         clean: bool,
+
+        /// Simular ações sem executá-las
+        #[arg(long)]
+        dry_run: bool,
+
+        /// Confirmar automaticamente todas as ações
+        #[arg(short, long)]
+        yes: bool,
+
+        /// Número de versões a manter por pacote (padrão: 3)
+        #[arg(long, default_value = "3")]
+        keep: usize,
     },
 
     /// Listar todos os pacotes órfãos detectados
