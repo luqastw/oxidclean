@@ -4,7 +4,7 @@
 //! servindo como otimizador de dependências e removedor de pacotes que não são
 //! utilizados e apenas estão ocupando espaço.
 
-use clap::Parser;
+use clap::{CommandFactory, Parser};
 use colored::Colorize;
 use oxidclean::cli::output::{self, OutputOptions};
 use oxidclean::cli::{Cli, Commands};
@@ -76,6 +76,8 @@ fn run(cli: Cli) -> oxidclean::Result<()> {
             sort_by_size,
             ..output_opts
         }),
+
+        Commands::Completion { shell } => cmd_completion(shell),
     }
 }
 
@@ -112,7 +114,7 @@ fn cmd_scan(opts: OutputOptions, export: Option<String>) -> oxidclean::Result<()
 fn cmd_clean(dry_run: bool, yes: bool, opts: &OutputOptions) -> oxidclean::Result<()> {
     // Verificar sistema
     let distro = system_info::check_system_support()?;
-    if !opts.quiet {
+    if opts.verbose {
         output::print_info(&format!("Sistema detectado: {}", distro));
     }
 
@@ -121,7 +123,9 @@ fn cmd_clean(dry_run: bool, yes: bool, opts: &OutputOptions) -> oxidclean::Resul
     let report = scanner.scan()?;
 
     if report.orphans.is_empty() {
-        output::print_success("Nenhum pacote órfão encontrado!");
+        if !opts.quiet {
+            output::print_success("Nenhum pacote órfão encontrado!");
+        }
         return Ok(());
     }
 
@@ -135,7 +139,7 @@ fn cmd_clean(dry_run: bool, yes: bool, opts: &OutputOptions) -> oxidclean::Resul
         println!();
     }
 
-    if dry_run {
+    if dry_run && !opts.quiet {
         output::print_warning("Modo DRY-RUN: nenhuma alteração será feita");
         println!();
     }
@@ -154,24 +158,31 @@ fn cmd_clean(dry_run: bool, yes: bool, opts: &OutputOptions) -> oxidclean::Resul
     let mut cleaner = Cleaner::new(dry_run, yes)?;
     let result = cleaner.clean_interactive(orphan_packages)?;
 
-    // Exibir resumo
-    println!();
-    println!("{}", "═".repeat(50).cyan());
-    println!("{}", "Resumo da Limpeza".bold());
-    println!("{}", "═".repeat(50).cyan());
-    println!("  Removidos: {}", result.removed.len().to_string().green());
-    println!("  Pulados:   {}", result.skipped.len().to_string().yellow());
-    println!("  Falhas:    {}", result.failed.len().to_string().red());
-    println!(
-        "  Espaço liberado: {}",
-        oxidclean::utils::humanize_bytes(result.space_freed).green()
-    );
-
-    if !result.failed.is_empty() {
+    // Exibir resumo (apenas se não for quiet)
+    if !opts.quiet {
         println!();
-        output::print_warning("Pacotes com falha:");
-        for (name, error) in &result.failed {
-            println!("  - {}: {}", name.red(), error);
+        println!("{}", "═".repeat(50).cyan());
+        println!("{}", "Resumo da Limpeza".bold());
+        println!("{}", "═".repeat(50).cyan());
+        println!("  Removidos: {}", result.removed.len().to_string().green());
+        println!("  Pulados:   {}", result.skipped.len().to_string().yellow());
+        println!("  Falhas:    {}", result.failed.len().to_string().red());
+        println!(
+            "  Espaço liberado: {}",
+            oxidclean::utils::humanize_bytes(result.space_freed).green()
+        );
+
+        if !result.failed.is_empty() {
+            println!();
+            output::print_warning("Pacotes com falha:");
+            for (name, error) in &result.failed {
+                println!("  - {}: {}", name.red(), error);
+            }
+        }
+    } else {
+        // Modo quiet: apenas listar removidos
+        for name in &result.removed {
+            println!("{}", name);
         }
     }
 
@@ -197,6 +208,17 @@ fn cmd_analyze(package: &str, opts: OutputOptions) -> oxidclean::Result<()> {
             "description": analysis.description,
         });
         println!("{}", serde_json::to_string_pretty(&json)?);
+        return Ok(());
+    }
+
+    if opts.quiet {
+        // Modo quiet: apenas informações essenciais
+        println!("{} {}", analysis.package_name, analysis.version);
+        println!("size:{}", analysis.size);
+        println!("total:{}", analysis.total_size);
+        println!("explicit:{}", analysis.is_explicit);
+        println!("deps:{}", analysis.direct_dependencies.len());
+        println!("rdeps:{}", analysis.reverse_dependencies.len());
         return Ok(());
     }
 
@@ -500,6 +522,18 @@ fn cmd_list(opts: OutputOptions) -> oxidclean::Result<()> {
             );
         }
     }
+
+    Ok(())
+}
+/// Comando: completion
+fn cmd_completion(shell: oxidclean::cli::Shell) -> oxidclean::Result<()> {
+    use clap_complete::generate;
+    use std::io;
+
+    let mut cmd = Cli::command();
+    let name = cmd.get_name().to_string();
+    let shell: clap_complete::Shell = shell.into();
+    generate(shell, &mut cmd, name, &mut io::stdout());
 
     Ok(())
 }

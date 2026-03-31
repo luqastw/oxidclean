@@ -1,4 +1,14 @@
-//! Módulo Utils - Utilitários
+//! # Módulo Utils
+//!
+//! Utilitários e helpers para OxidClean.
+//!
+//! ## Funcionalidades
+//!
+//! - [`disk_usage`]: Cálculo e formatação de tamanhos em disco
+//! - [`permissions`]: Verificação de permissões root
+//! - [`progress`]: Barras de progresso e spinners
+//! - [`system_info`]: Detecção de distribuição Linux
+//! - [`terminal`]: Utilitários de terminal
 
 pub mod disk_usage;
 pub mod permissions;

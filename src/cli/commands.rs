@@ -1,6 +1,6 @@
 //! Definição de comandos CLI usando clap
 
-use clap::{Parser, Subcommand};
+use clap::{Parser, Subcommand, ValueEnum};
 
 /// OxidClean - Gerenciador de pacotes órfãos do Arch Linux
 #[derive(Parser)]
@@ -20,6 +20,33 @@ pub struct Cli {
     /// Modo silencioso - exibe apenas resultados
     #[arg(short, long, global = true)]
     pub quiet: bool,
+}
+
+/// Shells suportados para completion
+#[derive(Debug, Clone, Copy, ValueEnum)]
+pub enum Shell {
+    /// Bash shell
+    Bash,
+    /// Zsh shell
+    Zsh,
+    /// Fish shell
+    Fish,
+    /// PowerShell
+    Powershell,
+    /// Elvish shell
+    Elvish,
+}
+
+impl From<Shell> for clap_complete::Shell {
+    fn from(shell: Shell) -> Self {
+        match shell {
+            Shell::Bash => clap_complete::Shell::Bash,
+            Shell::Zsh => clap_complete::Shell::Zsh,
+            Shell::Fish => clap_complete::Shell::Fish,
+            Shell::Powershell => clap_complete::Shell::PowerShell,
+            Shell::Elvish => clap_complete::Shell::Elvish,
+        }
+    }
 }
 
 /// Subcomandos disponíveis
@@ -89,5 +116,12 @@ pub enum Commands {
         /// Ordenar por tamanho em disco
         #[arg(long)]
         sort_by_size: bool,
+    },
+
+    /// Gerar scripts de auto-completar para shell
+    Completion {
+        /// Shell para gerar completion
+        #[arg(value_enum)]
+        shell: Shell,
     },
 }
