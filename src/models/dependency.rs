@@ -20,9 +20,11 @@ pub struct DependencyGraph {
 impl DependencyGraph {
     /// Constrói o grafo a partir da lista de pacotes
     pub fn build(packages: &[Package]) -> Self {
-        let mut dependencies: HashMap<String, HashSet<String>> = HashMap::new();
-        let mut reverse_dependencies: HashMap<String, HashSet<String>> = HashMap::new();
-        let mut explicit_packages: HashSet<String> = HashSet::new();
+        let capacity = packages.len();
+        let mut dependencies: HashMap<String, HashSet<String>> = HashMap::with_capacity(capacity);
+        let mut reverse_dependencies: HashMap<String, HashSet<String>> =
+            HashMap::with_capacity(capacity);
+        let mut explicit_packages: HashSet<String> = HashSet::with_capacity(capacity / 3);
 
         // Inicializar todos os pacotes no grafo
         for pkg in packages {
@@ -38,16 +40,16 @@ impl DependencyGraph {
         for pkg in packages {
             let deps: HashSet<String> = pkg.dependencies.iter().cloned().collect();
 
-            // Adicionar dependências diretas
-            dependencies.insert(pkg.name.clone(), deps.clone());
-
-            // Atualizar dependências reversas
+            // Atualizar dependências reversas antes de mover deps
             for dep in &deps {
                 reverse_dependencies
                     .entry(dep.clone())
                     .or_default()
                     .insert(pkg.name.clone());
             }
+
+            // Adicionar dependências diretas
+            dependencies.insert(pkg.name.clone(), deps);
         }
 
         Self {
