@@ -54,8 +54,9 @@ fn default_cache_versions() -> usize {
 }
 
 fn default_log_path() -> PathBuf {
-    dirs::config_dir()
-        .unwrap_or_else(|| PathBuf::from("~/.config"))
+    dirs::home_dir()
+        .unwrap_or_else(|| PathBuf::from("/root"))
+        .join(".config")
         .join("oxidclean")
         .join("history.log")
 }
@@ -75,8 +76,9 @@ impl Default for Config {
 impl Config {
     /// Caminho padrão do arquivo de configuração
     pub fn config_path() -> PathBuf {
-        dirs::config_dir()
-            .unwrap_or_else(|| PathBuf::from("~/.config"))
+        dirs::home_dir()
+            .unwrap_or_else(|| PathBuf::from("/root"))
+            .join(".config")
             .join("oxidclean")
             .join("config.toml")
     }

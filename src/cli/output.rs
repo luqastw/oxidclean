@@ -16,8 +16,9 @@ pub struct OutputOptions {
 /// Imprime o relatório do sistema
 pub fn print_report(report: &SystemReport, options: &OutputOptions) {
     if options.json {
-        if let Ok(json) = report.to_json() {
-            println!("{}", json);
+        match report.to_json() {
+            Ok(json) => println!("{}", json),
+            Err(e) => eprintln!("Erro ao serializar relatório JSON: {}", e),
         }
         return;
     }

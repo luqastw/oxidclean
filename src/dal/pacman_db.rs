@@ -81,7 +81,13 @@ impl PacmanReader {
         // Usar rayon para parsing paralelo
         let packages: Vec<Package> = entries
             .par_iter()
-            .filter_map(|path| self.read_package_from_dir(path).ok())
+            .filter_map(|path| match self.read_package_from_dir(path) {
+                Ok(pkg) => Some(pkg),
+                Err(e) => {
+                    log::warn!("Falha ao ler pacote de {}: {}", path.display(), e);
+                    None
+                }
+            })
             .collect();
 
         Ok(packages)
