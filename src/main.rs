@@ -28,11 +28,6 @@ fn main() {
 }
 
 fn run(cli: Cli) -> oxidclean::Result<()> {
-    // Verificar sistema suportado (exceto para help/version)
-    if !matches!(cli.command, Commands::List { .. }) {
-        // Verificação de sistema pode ser relaxada para list
-    }
-
     let output_opts = OutputOptions {
         verbose: cli.verbose,
         quiet: cli.quiet,
@@ -191,6 +186,7 @@ fn cmd_clean(dry_run: bool, yes: bool, opts: &OutputOptions) -> oxidclean::Resul
 
 /// Comando: analyze
 fn cmd_analyze(package: &str, opts: OutputOptions) -> oxidclean::Result<()> {
+    system_info::check_system_support()?;
     let analyzer = Analyzer::new()?;
     let analysis = analyzer.analyze_package(package)?;
 
@@ -301,6 +297,8 @@ fn cmd_cache(
     use dialoguer::Confirm;
     use oxidclean::core::cache_manager::CacheManager;
     use oxidclean::utils::{permissions, symbols};
+
+    system_info::check_system_support()?;
 
     let mut manager = CacheManager::new()?;
     manager.set_keep_versions(keep);
