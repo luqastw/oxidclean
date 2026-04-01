@@ -151,7 +151,7 @@ impl CacheManager {
 
         for (_name, mut versions) in by_name {
             // Ordenar por versão (mais recente primeiro)
-            versions.sort_by(|a, b| b.version.cmp(&a.version));
+            versions.sort_by(|a, b| compare_versions(&b.version, &a.version));
 
             // Manter apenas keep_versions mais recentes
             if versions.len() > self.keep_versions {
@@ -222,6 +222,48 @@ impl CacheManager {
     pub fn cache_dir(&self) -> &Path {
         &self.cache_dir
     }
+}
+
+/// Compara versões de pacote considerando componentes numéricos.
+/// Formato: "version-release" (ex: "9.0.1234-1")
+/// Compara numericamente quando possível, senão lexicograficamente.
+fn compare_versions(a: &str, b: &str) -> std::cmp::Ordering {
+    // Split por '-' para separar version do release
+    let a_parts: Vec<&str> = a.split('-').collect();
+    let b_parts: Vec<&str> = b.split('-').collect();
+
+    for (a_seg, b_seg) in a_parts.iter().zip(b_parts.iter()) {
+        let ord = compare_segments(a_seg, b_seg);
+        if ord != std::cmp::Ordering::Equal {
+            return ord;
+        }
+    }
+
+    a_parts.len().cmp(&b_parts.len())
+}
+
+fn compare_segments(a: &str, b: &str) -> std::cmp::Ordering {
+    let a_tokens: Vec<&str> = a.split('.').collect();
+    let b_tokens: Vec<&str> = b.split('.').collect();
+
+    for (a_tok, b_tok) in a_tokens.iter().zip(b_tokens.iter()) {
+        match (a_tok.parse::<u64>(), b_tok.parse::<u64>()) {
+            (Ok(a_num), Ok(b_num)) => {
+                let ord = a_num.cmp(&b_num);
+                if ord != std::cmp::Ordering::Equal {
+                    return ord;
+                }
+            }
+            _ => {
+                let ord = a_tok.cmp(b_tok);
+                if ord != std::cmp::Ordering::Equal {
+                    return ord;
+                }
+            }
+        }
+    }
+
+    a_tokens.len().cmp(&b_tokens.len())
 }
 
 impl Default for CacheManager {
