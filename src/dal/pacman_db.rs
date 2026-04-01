@@ -312,7 +312,9 @@ impl PacmanReader {
 
 impl Default for PacmanReader {
     fn default() -> Self {
-        Self::new().expect("Falha ao criar PacmanReader padrão")
+        Self {
+            db_path: PathBuf::from(PACMAN_DB_PATH),
+        }
     }
 }
 

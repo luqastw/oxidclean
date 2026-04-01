@@ -134,9 +134,10 @@ impl DependencyGraph {
                     self.dfs_cycle(dep, visited, rec_stack, path, cycles);
                 } else if rec_stack.contains(dep) {
                     // Ciclo encontrado
-                    let cycle_start = path.iter().position(|x| x == dep).unwrap();
-                    let cycle: Vec<String> = path[cycle_start..].to_vec();
-                    cycles.push(cycle);
+                    if let Some(cycle_start) = path.iter().position(|x| x == dep) {
+                        let cycle: Vec<String> = path[cycle_start..].to_vec();
+                        cycles.push(cycle);
+                    }
                 }
             }
         }

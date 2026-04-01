@@ -268,7 +268,7 @@ fn compare_segments(a: &str, b: &str) -> std::cmp::Ordering {
 
 impl Default for CacheManager {
     fn default() -> Self {
-        Self::new().expect("Falha ao criar CacheManager")
+        Self::with_options(PathBuf::from("/var/cache/pacman/pkg"), 3)
     }
 }
 
