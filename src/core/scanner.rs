@@ -127,12 +127,7 @@ impl Scanner {
         }
 
         // Pacotes relacionados a sistema/kernel merecem atenção
-        let caution_patterns = [
-            "linux", "kernel", "nvidia", "amd", "mesa", "xorg", "wayland", "systemd", "dbus",
-            "polkit", "sudo", "openssh",
-        ];
-
-        for pattern in &caution_patterns {
+        for pattern in super::CAUTION_PATTERNS {
             if pkg.name.contains(pattern) {
                 return RiskLevel::Caution;
             }

@@ -16,32 +16,6 @@ pub fn create_clean_progress(total: u64) -> ProgressBar {
     pb
 }
 
-/// Cria uma barra de progresso para scan de pacotes
-pub fn create_scan_progress(total: u64) -> ProgressBar {
-    let pb = ProgressBar::new(total);
-    pb.set_style(
-        ProgressStyle::default_bar()
-            .template("{spinner:.green} [{bar:40.cyan/blue}] {pos}/{len} pacotes {msg}")
-            .unwrap()
-            .progress_chars("=>-"),
-    );
-    pb.enable_steady_tick(Duration::from_millis(100));
-    pb
-}
-
-/// Cria um spinner para operações indeterminadas
-pub fn create_spinner(message: &str) -> ProgressBar {
-    let pb = ProgressBar::new_spinner();
-    pb.set_style(
-        ProgressStyle::default_spinner()
-            .template("{spinner:.green} {msg}")
-            .unwrap(),
-    );
-    pb.set_message(message.to_string());
-    pb.enable_steady_tick(Duration::from_millis(80));
-    pb
-}
-
 /// Símbolos de status para output
 pub mod symbols {
     /// Sucesso

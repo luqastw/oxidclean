@@ -33,3 +33,21 @@ pub use analyzer::Analyzer;
 pub use cleaner::Cleaner;
 pub use scanner::Scanner;
 pub use validator::Validator;
+
+/// Padrões de pacotes que merecem atenção antes de remover
+pub const CAUTION_PATTERNS: &[&str] = &[
+    "linux",
+    "kernel",
+    "nvidia",
+    "amd",
+    "mesa",
+    "xorg",
+    "wayland",
+    "systemd",
+    "dbus",
+    "polkit",
+    "sudo",
+    "openssh",
+    "grub",
+    "efibootmgr",
+];
