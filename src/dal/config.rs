@@ -11,7 +11,7 @@ pub struct ConfigReader;
 impl ConfigReader {
     /// Carrega a configuração do arquivo padrão ou retorna configuração padrão
     pub fn load() -> Config {
-        Self::load_from(&Config::config_path()).unwrap_or_default()
+        Self::load_from(Config::config_path()).unwrap_or_default()
     }
 
     /// Carrega a configuração de um arquivo específico
@@ -23,7 +23,7 @@ impl ConfigReader {
 
     /// Salva a configuração no arquivo padrão
     pub fn save(config: &Config) -> Result<()> {
-        Self::save_to(config, &Config::config_path())
+        Self::save_to(config, Config::config_path())
     }
 
     /// Salva a configuração em um arquivo específico

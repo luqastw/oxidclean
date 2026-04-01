@@ -149,7 +149,7 @@ impl Scanner {
 
     /// Verifica se há cache válido
     pub fn has_valid_cache(&self) -> bool {
-        self.cache.as_ref().map_or(false, |c| c.is_valid())
+        self.cache.as_ref().is_some_and(|c| c.is_valid())
     }
 }
 

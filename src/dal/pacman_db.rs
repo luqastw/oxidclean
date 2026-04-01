@@ -267,10 +267,7 @@ impl PacmanReader {
                     .iter()
                     .map(|s| {
                         // Remover versão da dependência (ex: "glibc>=2.38" -> "glibc")
-                        s.split(|c| c == '>' || c == '<' || c == '=')
-                            .next()
-                            .unwrap_or(s)
-                            .to_string()
+                        s.split(['>', '<', '=']).next().unwrap_or(s).to_string()
                     })
                     .collect();
             }

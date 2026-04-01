@@ -128,9 +128,10 @@ impl OrphanPackage {
 }
 
 /// Nível de risco para remoção de um pacote
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
 pub enum RiskLevel {
     /// Seguro para remover (verde)
+    #[default]
     Safe,
 
     /// Atenção necessária (amarelo)
@@ -138,12 +139,6 @@ pub enum RiskLevel {
 
     /// Crítico - não remover (vermelho)
     Critical,
-}
-
-impl Default for RiskLevel {
-    fn default() -> Self {
-        Self::Safe
-    }
 }
 
 /// Estatísticas do cache do pacman

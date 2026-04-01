@@ -66,19 +66,14 @@ impl Package {
 }
 
 /// Razão da instalação do pacote
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
 pub enum InstallReason {
     /// Pacote instalado explicitamente pelo usuário
+    #[default]
     Explicit,
 
     /// Pacote instalado como dependência de outro
     Dependency,
-}
-
-impl Default for InstallReason {
-    fn default() -> Self {
-        Self::Explicit
-    }
 }
 
 impl std::fmt::Display for InstallReason {

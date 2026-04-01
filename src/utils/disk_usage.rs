@@ -41,7 +41,7 @@ pub fn humanize_bytes(bytes: u64) -> String {
 /// Converte string de tamanho do pacman para bytes
 /// Exemplo: "1.5 MiB" -> 1572864
 pub fn parse_size(size_str: &str) -> u64 {
-    let parts: Vec<&str> = size_str.trim().split_whitespace().collect();
+    let parts: Vec<&str> = size_str.split_whitespace().collect();
     if parts.len() != 2 {
         return 0;
     }

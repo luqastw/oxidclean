@@ -5,22 +5,12 @@ use colored::Colorize;
 use comfy_table::{presets::UTF8_FULL, ContentArrangement, Table};
 
 /// Opções de output
+#[derive(Default)]
 pub struct OutputOptions {
     pub verbose: bool,
     pub quiet: bool,
     pub json: bool,
     pub sort_by_size: bool,
-}
-
-impl Default for OutputOptions {
-    fn default() -> Self {
-        Self {
-            verbose: false,
-            quiet: false,
-            json: false,
-            sort_by_size: false,
-        }
-    }
 }
 
 /// Imprime o relatório do sistema

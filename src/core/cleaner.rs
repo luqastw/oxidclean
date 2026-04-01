@@ -79,9 +79,9 @@ impl Cleaner {
             None
         };
 
-        for (_idx, pkg) in packages.into_iter().enumerate() {
+        for pkg in packages.into_iter() {
             if let Some(ref pb) = pb {
-                pb.set_message(format!("{}", pkg.name));
+                pb.set_message(pkg.name.to_string());
             }
 
             // Verificar se é protegido

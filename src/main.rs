@@ -305,7 +305,7 @@ fn cmd_cache(
     let mut manager = CacheManager::new()?;
     manager.set_keep_versions(keep);
 
-    if stats || (!stats && !clean) {
+    if stats || !clean {
         let cache_stats = manager.scan()?;
 
         if opts.quiet {
@@ -380,9 +380,7 @@ fn cmd_cache(
         }
 
         // Confirmar
-        let proceed = if dry_run {
-            true
-        } else if yes {
+        let proceed = if dry_run || yes {
             true
         } else {
             Confirm::new()
@@ -502,25 +500,23 @@ fn cmd_list(opts: OutputOptions) -> oxidclean::Result<()> {
         for orphan in &orphans {
             println!("{}", orphan.name);
         }
+    } else if orphans.is_empty() {
+        output::print_success("Nenhum pacote órfão encontrado!");
     } else {
-        if orphans.is_empty() {
-            output::print_success("Nenhum pacote órfão encontrado!");
-        } else {
-            for orphan in &orphans {
-                println!(
-                    "{} {} ({})",
-                    orphan.name,
-                    orphan.version.dimmed(),
-                    oxidclean::utils::humanize_bytes(orphan.size).dimmed()
-                );
-            }
-            println!();
+        for orphan in &orphans {
             println!(
-                "Total: {} pacotes, {}",
-                orphans.len().to_string().yellow(),
-                oxidclean::utils::humanize_bytes(report.recoverable_space).green()
+                "{} {} ({})",
+                orphan.name,
+                orphan.version.dimmed(),
+                oxidclean::utils::humanize_bytes(orphan.size).dimmed()
             );
         }
+        println!();
+        println!(
+            "Total: {} pacotes, {}",
+            orphans.len().to_string().yellow(),
+            oxidclean::utils::humanize_bytes(report.recoverable_space).green()
+        );
     }
 
     Ok(())
