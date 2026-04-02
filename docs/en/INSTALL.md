@@ -33,7 +33,7 @@ makepkg -si
 
 ```bash
 # Clone repository
-git clone https://github.com/your-username/oxidclean.git
+git clone https://github.com/luqastw/oxidclean.git
 cd oxidclean
 
 # Build release

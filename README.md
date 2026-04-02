@@ -1,6 +1,6 @@
 # OxidClean
 
-[![CI](https://github.com/oxidclean/oxidclean/actions/workflows/ci.yml/badge.svg)](https://github.com/oxidclean/oxidclean/actions/workflows/ci.yml)
+[![CI](https://github.com/luqastw/oxidclean/actions/workflows/ci.yml/badge.svg)](https://github.com/luqastw/oxidclean/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 A terminal tool for identifying and removing orphan packages on Arch Linux and derivatives.
