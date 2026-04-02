@@ -28,7 +28,16 @@ pub enum Distro {
 impl Distro {
     /// Verifica se a distribuição é baseada em Arch
     pub fn is_arch_based(&self) -> bool {
-        !matches!(self, Distro::Unknown(_))
+        matches!(
+            self,
+            Distro::Arch
+                | Distro::Manjaro
+                | Distro::EndeavourOS
+                | Distro::Garuda
+                | Distro::ArcoLinux
+                | Distro::Artix
+                | Distro::ArchBased(_)
+        )
     }
 }
 
