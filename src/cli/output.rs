@@ -1,6 +1,6 @@
 //! Formatação de output para terminal
 
-use crate::models::{OrphanPackage, RiskLevel, SystemReport};
+use crate::models::{CacheStats, OrphanPackage, RiskLevel, SystemReport};
 use colored::Colorize;
 use comfy_table::{presets::UTF8_FULL, ContentArrangement, Table};
 
@@ -31,6 +31,10 @@ pub fn print_report(report: &SystemReport, options: &OutputOptions) {
     print_header();
     print_stats(report);
     print_orphans_table(&report.orphans, options.sort_by_size);
+
+    if let Some(ref cache_stats) = report.cache_stats {
+        print_cache_stats(cache_stats);
+    }
 }
 
 /// Imprime cabeçalho
@@ -116,6 +120,37 @@ fn print_orphan_names(orphans: &[OrphanPackage]) {
     for orphan in orphans {
         println!("{}", orphan.name);
     }
+}
+
+/// Imprime estatísticas do cache do pacman
+fn print_cache_stats(stats: &CacheStats) {
+    println!("{}", "💾 Cache do Pacman".bold());
+    println!(
+        "   Pacotes em cache:  {}",
+        stats.total_packages.to_string().cyan()
+    );
+    println!(
+        "   Tamanho total:     {}",
+        crate::utils::humanize_bytes(stats.total_size).cyan()
+    );
+    println!(
+        "   Não instalados:    {}",
+        if stats.unused_packages > 0 {
+            stats.unused_packages.to_string().yellow().to_string()
+        } else {
+            "0".green().to_string()
+        }
+    );
+    println!(
+        "   Espaço unused:     {}",
+        if stats.unused_size > 0 {
+            crate::utils::humanize_bytes(stats.unused_size)
+                .yellow()
+                .to_string()
+        } else {
+            "0 B".green().to_string()
+        }
+    );
 }
 
 /// Imprime mensagem de sucesso

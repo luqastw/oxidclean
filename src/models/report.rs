@@ -81,6 +81,26 @@ impl SystemReport {
             }
         }
 
+        if let Some(ref cache) = self.cache_stats {
+            md.push_str("## Cache do Pacman\n\n");
+            md.push_str(&format!(
+                "- **Pacotes em cache:** {}\n",
+                cache.total_packages
+            ));
+            md.push_str(&format!(
+                "- **Tamanho total:** {}\n",
+                crate::utils::humanize_bytes(cache.total_size)
+            ));
+            md.push_str(&format!(
+                "- **Não instalados:** {}\n",
+                cache.unused_packages
+            ));
+            md.push_str(&format!(
+                "- **Espaço não utilizado:** {}\n",
+                crate::utils::humanize_bytes(cache.unused_size)
+            ));
+        }
+
         md
     }
 }
@@ -212,5 +232,53 @@ mod tests {
         assert!(md.contains("OxidClean"));
         assert!(md.contains("test-pkg"));
         assert!(md.contains("100"));
+    }
+
+    #[test]
+    fn test_to_markdown_without_cache_stats() {
+        let report = SystemReport::new();
+        let md = report.to_markdown();
+        assert!(!md.contains("Cache do Pacman"));
+    }
+
+    #[test]
+    fn test_to_markdown_with_cache_stats() {
+        let mut report = SystemReport::new();
+        report.cache_stats = Some(CacheStats {
+            total_packages: 50,
+            total_size: 1048576,
+            unused_packages: 10,
+            unused_size: 204800,
+        });
+
+        let md = report.to_markdown();
+        assert!(md.contains("Cache do Pacman"));
+        assert!(md.contains("50"));
+        assert!(md.contains("10"));
+    }
+
+    #[test]
+    fn test_to_json_with_cache_stats() {
+        let mut report = SystemReport::new();
+        report.cache_stats = Some(CacheStats {
+            total_packages: 25,
+            total_size: 512000,
+            unused_packages: 5,
+            unused_size: 102400,
+        });
+
+        let json = report.to_json().unwrap();
+        assert!(json.contains("cache_stats"));
+        assert!(json.contains("\"total_packages\": 25"));
+        assert!(json.contains("\"unused_packages\": 5"));
+    }
+
+    #[test]
+    fn test_cache_stats_default() {
+        let stats = CacheStats::default();
+        assert_eq!(stats.total_packages, 0);
+        assert_eq!(stats.total_size, 0);
+        assert_eq!(stats.unused_packages, 0);
+        assert_eq!(stats.unused_size, 0);
     }
 }

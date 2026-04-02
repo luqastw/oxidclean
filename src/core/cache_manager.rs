@@ -300,4 +300,109 @@ mod tests {
         assert_eq!(entry.name, "vim");
         assert_eq!(entry.version, "9.0.1234-1");
     }
+
+    #[test]
+    fn test_scan_counts_cache_entries() {
+        let temp_dir = TempDir::new().unwrap();
+        let manager = CacheManager::with_options(temp_dir.path().to_path_buf(), 3);
+
+        // Criar pacotes em cache
+        fs::write(
+            temp_dir.path().join("vim-9.0.1234-1-x86_64.pkg.tar.zst"),
+            "a".repeat(1000),
+        )
+        .unwrap();
+        fs::write(
+            temp_dir.path().join("vim-8.2.1000-1-x86_64.pkg.tar.zst"),
+            "b".repeat(800),
+        )
+        .unwrap();
+        fs::write(
+            temp_dir.path().join("git-2.40.0-1-x86_64.pkg.tar.zst"),
+            "c".repeat(2000),
+        )
+        .unwrap();
+
+        let stats = manager.scan().unwrap();
+
+        assert_eq!(stats.total_packages, 3);
+        assert_eq!(stats.total_size, 3800);
+    }
+
+    #[test]
+    fn test_find_old_versions() {
+        let temp_dir = TempDir::new().unwrap();
+        let manager = CacheManager::with_options(temp_dir.path().to_path_buf(), 1);
+
+        // 3 versões do mesmo pacote
+        fs::write(
+            temp_dir.path().join("vim-9.0.0001-1-x86_64.pkg.tar.zst"),
+            "x",
+        )
+        .unwrap();
+        fs::write(
+            temp_dir.path().join("vim-9.0.0002-1-x86_64.pkg.tar.zst"),
+            "x",
+        )
+        .unwrap();
+        fs::write(
+            temp_dir.path().join("vim-9.0.0003-1-x86_64.pkg.tar.zst"),
+            "x",
+        )
+        .unwrap();
+
+        let old = manager.find_old_versions().unwrap();
+
+        // keep_versions=1, então 2 ficam como old
+        assert_eq!(old.len(), 2);
+    }
+
+    #[test]
+    fn test_list_cache_entries_ignores_non_pkg() {
+        let temp_dir = TempDir::new().unwrap();
+        let manager = CacheManager::with_options(temp_dir.path().to_path_buf(), 3);
+
+        // Arquivo válido
+        fs::write(temp_dir.path().join("vim-9.0-1-x86_64.pkg.tar.zst"), "x").unwrap();
+
+        // Arquivo que não é pacote
+        fs::write(temp_dir.path().join("README.md"), "not a package").unwrap();
+        fs::write(temp_dir.path().join("somefile.txt"), "nope").unwrap();
+
+        let entries = manager.list_cache_entries().unwrap();
+
+        assert_eq!(entries.len(), 1);
+        assert_eq!(entries[0].name, "vim");
+    }
+
+    #[test]
+    fn test_clean_removes_entries() {
+        let temp_dir = TempDir::new().unwrap();
+        let manager = CacheManager::with_options(temp_dir.path().to_path_buf(), 3);
+
+        let pkg_path = temp_dir.path().join("vim-9.0-1-x86_64.pkg.tar.zst");
+        fs::write(&pkg_path, "a".repeat(500)).unwrap();
+
+        let entries = manager.list_cache_entries().unwrap();
+        assert_eq!(entries.len(), 1);
+
+        let freed = manager.clean(&entries).unwrap();
+        assert_eq!(freed, 500);
+        assert!(!pkg_path.exists());
+    }
+
+    #[test]
+    fn test_parse_complex_package_name() {
+        let temp_dir = TempDir::new().unwrap();
+        let manager = CacheManager::with_options(temp_dir.path().to_path_buf(), 3);
+
+        let pkg_path = temp_dir
+            .path()
+            .join("lib32-nvidia-utils-550.67-1-x86_64.pkg.tar.zst");
+        fs::write(&pkg_path, "test").unwrap();
+
+        let entry = manager.parse_cache_filename(&pkg_path).unwrap();
+        assert_eq!(entry.name, "lib32-nvidia-utils");
+        assert_eq!(entry.version, "550.67-1");
+    }
 }

@@ -1,10 +1,11 @@
 //! Scanner de pacotes do sistema
 
+use crate::core::cache_manager::CacheManager;
 use crate::dal::{ConfigReader, OperationLogger, PacmanReader};
 use crate::models::{Config, DependencyGraph, OrphanPackage, Package, RiskLevel, SystemReport};
 use crate::Result;
 use chrono::Utc;
-use log::{debug, info};
+use log::{debug, info, warn};
 use std::time::Instant;
 
 /// Scanner de pacotes do sistema
@@ -71,22 +72,44 @@ impl Scanner {
         // 6. Calcular espaço recuperável
         let recoverable_space: u64 = orphans.iter().map(|o| o.size).sum();
 
-        // 7. Gerar relatório
+        // 7. Ler estatísticas do cache do pacman
+        let cache_stats = match CacheManager::new() {
+            Ok(manager) => match manager.scan() {
+                Ok(stats) => {
+                    debug!(
+                        "Cache do pacman: {} pacotes, {}",
+                        stats.total_packages,
+                        crate::utils::humanize_bytes(stats.total_size)
+                    );
+                    Some(stats)
+                }
+                Err(e) => {
+                    warn!("Falha ao ler estatísticas do cache: {}", e);
+                    None
+                }
+            },
+            Err(e) => {
+                warn!("Falha ao criar gerenciador de cache: {}", e);
+                None
+            }
+        };
+
+        // 8. Gerar relatório
         let report = SystemReport {
             total_packages: packages.len(),
             orphans,
             recoverable_space,
-            cache_stats: None, // TODO: Implementar cache stats
+            cache_stats,
             scan_timestamp: Utc::now(),
         };
 
         let elapsed = start.elapsed();
         info!("Scan completo em {:.2}s", elapsed.as_secs_f64());
 
-        // 8. Cachear resultado
+        // 9. Cachear resultado
         self.cache = Some(ScanCache::new(report.clone()));
 
-        // 9. Log da operação
+        // 10. Log da operação
         if let Ok(logger) = OperationLogger::new() {
             let _ = logger.log_scan(report.orphans.len(), true);
         }
@@ -280,5 +303,41 @@ old-lib
         // Invalidar cache
         scanner.invalidate_cache();
         assert!(!scanner.has_valid_cache());
+    }
+
+    #[test]
+    fn test_scan_populates_cache_stats() {
+        let temp_dir = TempDir::new().unwrap();
+        create_mock_db(temp_dir.path());
+
+        let reader = PacmanReader::with_path(temp_dir.path()).unwrap();
+        let mut scanner = Scanner::with_reader(reader);
+
+        let report = scanner.scan().unwrap();
+
+        // cache_stats deve ser Some (mesmo que vazio em ambiente de teste)
+        assert!(
+            report.cache_stats.is_some(),
+            "cache_stats deveria ser Some após scan"
+        );
+    }
+
+    #[test]
+    fn test_scan_report_fields() {
+        let temp_dir = TempDir::new().unwrap();
+        create_mock_db(temp_dir.path());
+
+        let reader = PacmanReader::with_path(temp_dir.path()).unwrap();
+        let mut scanner = Scanner::with_reader(reader);
+
+        let report = scanner.scan().unwrap();
+
+        assert_eq!(report.total_packages, 3);
+        assert_eq!(report.orphans.len(), 1);
+        assert_eq!(report.orphans[0].name, "old-lib");
+        assert_eq!(report.orphans[0].version, "1.0");
+        assert_eq!(report.orphans[0].size, 512);
+        assert_eq!(report.recoverable_space, 512);
+        assert!(report.cache_stats.is_some());
     }
 }
